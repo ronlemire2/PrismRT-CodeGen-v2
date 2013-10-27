@@ -1,0 +1,104 @@
+﻿<#@ template debug="false" hostspecific="true" language="C#" #>
+<#@ output extension=".cs" #>
+<#@ include file="..\..\CommonTableTemplate\CommonTableTemplate.tt"#>
+<#
+    string EntityKey = "EntityId";
+    string EntityKeyParameter = "entityId";
+    string EntityName = "Entity";
+    string EntityNamePlural = "Entities";
+    string EntityNameParameter = "entity";
+    string EntityNamePluralParameter = "entities";
+#>
+using <#= UILogicModelsNamespace #>;
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Globalization;
+using System.Linq;
+using System.Net;
+using System.Net.Http;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace <#= UILogicServicesNamespace #>
+{
+    public class <#= EntityName #>ServiceProxy : I<#= EntityName #>ServiceProxy
+    {
+        private string _<#= EntityNameParameter #>BaseUrl = string.Format(CultureInfo.InvariantCulture, "{0}/api/<#= EntityName #>/", Constants.ServerAddress);
+ 
+        // Get all CommonDataTypes
+        public async Task<CrudResult> Get<#= EntityNamePlural #>Async() {
+            using (var httpClient = new HttpClient()) {
+                var response = await httpClient.GetAsync(string.Format("{0}", _<#= EntityNameParameter #>BaseUrl));
+                response.EnsureSuccessStatusCode();
+                CrudResult crudResult = await response.Content.ReadAsAsync<CrudResult>();
+                return crudResult;
+            }
+        }
+
+        // Get a CommonDataType by Id        
+        public async Task<CrudResult> Get<#= EntityName #>Async(int <#= EntityKeyParameter #>) {
+            using (var httpClient = new HttpClient()) {
+                var response = await httpClient.GetAsync(string.Format("{0}{1}", _<#= EntityNameParameter #>BaseUrl, <#= EntityNameParameter #>Id.ToString()));
+                response.EnsureSuccessStatusCode();
+                CrudResult crudResult = await response.Content.ReadAsAsync<CrudResult>();
+                return crudResult;
+            }
+        }
+
+        // Create a new CommonDataType
+        public async Task<CrudResult> Create<#= EntityName #>Async(<#= EntityName #> <#= EntityNameParameter #>) {
+            using (HttpClientHandler handler = new HttpClientHandler { CookieContainer = new CookieContainer() }) {
+                using (var httpClient = new HttpClient(handler)) {
+                    string postUrl = string.Format("{0}", _<#= EntityNameParameter #>BaseUrl);
+                    var response = await httpClient.PostAsJsonAsync<<#= EntityName #>>(postUrl, <#= EntityNameParameter #>);
+                    await response.EnsureSuccessWithValidationSupportAsync();
+                    CrudResult crudResult = await response.Content.ReadAsAsync<CrudResult>();
+                    return crudResult;
+                }
+            }
+        }
+
+        // Update an existing CommonDataType
+        public async Task<CrudResult> Update<#= EntityName #>Async(<#= EntityName #> <#= EntityNameParameter #>) {
+            using (HttpClientHandler handler = new HttpClientHandler { CookieContainer = new CookieContainer() }) {
+                using (var httpClient = new HttpClient()) {
+                    string putUrl = string.Format("{0}{1}", _<#= EntityNameParameter #>BaseUrl, <#= EntityNameParameter #>.Id.ToString());
+                    var response = await httpClient.PutAsJsonAsync<<#= EntityName #>>(putUrl, <#= EntityNameParameter #>);
+                    await response.EnsureSuccessWithValidationSupportAsync();
+                    CrudResult crudResult = await response.Content.ReadAsAsync<CrudResult>();
+                    return crudResult;
+                }
+            }
+        }
+
+        // Delete an existing CommonDataType
+        public async Task<CrudResult> Delete<#= EntityName #>Async(int <#= EntityNameParameter #>Id) {
+            using (HttpClientHandler handler = new HttpClientHandler { CookieContainer = new CookieContainer() }) {
+                using (var httpClient = new HttpClient()) {
+                    string deleteUrl = string.Format("{0}{1}", _<#= EntityNameParameter #>BaseUrl, <#= EntityNameParameter #>Id.ToString());
+                    var response = await httpClient.DeleteAsync(deleteUrl);
+                    await response.EnsureSuccessWithValidationSupportAsync();
+                    CrudResult crudResult = await response.Content.ReadAsAsync<CrudResult>();
+                    return crudResult;
+                }
+            }
+        }
+    }
+
+
+    // Create a server-side error for testing
+    //throw new HttpRequestException("GetCommonDataTypesAsync failed. Check log for details.");
+
+    // Create a server-side error for testing
+    //commonDataTypeId = 10001;
+
+    // Create a server-side error for testing
+    //throw new HttpRequestException("CreateCommonDataTypeAsync failed. Check log for details.");
+
+    // Create a server-side error for testing
+    //throw new HttpRequestException("UpdateCommonDataTypeAsync failed. Check log for details.");
+
+    // Create a server-side error for testing
+    //throw new HttpRequestException("DeleteCommonDataTypeAsync failed. Check log for details.");
+}

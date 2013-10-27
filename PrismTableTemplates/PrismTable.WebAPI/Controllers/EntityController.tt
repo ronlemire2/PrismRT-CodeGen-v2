@@ -1,0 +1,121 @@
+﻿<#@ template debug="false" hostspecific="true" language="C#" #>
+<#@ output extension=".cs" #>
+<#@ include file="..\..\CommonTableTemplate\CommonTableTemplate.tt"#>
+<#
+    string EntityName = "Entity";
+    string EntityNamePlural = "Entities";
+    string EntityNameParameter= "entity";
+    string EntityNameParameterPlural = "entities";
+    string EntityTablename = "Entity";
+
+    Table table = database.Tables[EntityTablename];
+    table.Refresh();
+#>
+using <#= DalEF4RepositoriesNamespace #>;
+using <#= DalInterfaceModelsNamespace #>;
+using <#= DalInterfaceRepositoriesNamespace #>;
+using <#= WebAPIStringsNamespace #>;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net;
+using System.Net.Http;
+using System.Text;
+using System.Threading.Tasks;
+using System.Web.Http;
+
+namespace <#= WebAPIControllersNamespace #>
+{
+    public class <#= EntityName #>Controller : ApiController
+    {
+        
+        private I<#= EntityName #>Repository _<#= EntityNameParameter #>Repository;
+
+        public <#= EntityName #>Controller()
+            : this(new <#= EntityName #>Repository())
+        { }
+
+        public <#= EntityName #>Controller(I<#= EntityName #>Repository <#= EntityNameParameter #>Repository)
+        {
+            _<#= EntityNameParameter #>Repository = <#= EntityNameParameter #>Repository;
+        }
+
+        // GET /api/<#= EntityName #>
+        public HttpResponseMessage Get() {
+            try {
+                IEnumerable<<#= EntityName #>> <#= EntityNameParameter #>List = _<#= EntityNameParameter #>Repository.Get<#= EntityNamePlural #>();
+                return Request.CreateResponse<CrudResult>(HttpStatusCode.OK, new CrudResult(CrudStatusCode.Success, <#= EntityNameParameter #>List.Count(), <#= EntityNameParameter #>List));
+            }
+            catch (Exception ex) {
+                return Request.CreateErrorResponse(HttpStatusCode.NotFound, ex.Message);
+            }
+        }
+
+        // GET /api/<#= EntityName #>/Id 
+        public HttpResponseMessage Get(int Id) {
+            try {
+                <#= EntityName #> <#= EntityNameParameter #> = _<#= EntityNameParameter #>Repository.Get<#= EntityName #>(Id);
+                return Request.CreateResponse<CrudResult>(HttpStatusCode.OK, new CrudResult(CrudStatusCode.Success, 1, new List<<#= EntityName #>> { <#= EntityNameParameter #> }));
+            }
+            catch (Exception ex) {
+                return Request.CreateErrorResponse(HttpStatusCode.NotFound, ex.Message);
+            }
+        }
+
+        // POST /api/<#= EntityName #>
+        public HttpResponseMessage Post(<#= EntityName #> <#= EntityNameParameter #>)
+        {
+            if (ModelState.IsValid) {
+                try {
+                    <#= EntityNameParameter #> = _<#= EntityNameParameter #>Repository.Create(<#= EntityNameParameter #>);
+                    var response = Request.CreateResponse<CrudResult>(HttpStatusCode.Created, new CrudResult(CrudStatusCode.Success, 1, new List<<#= EntityName #>> { <#= EntityNameParameter #> }));
+                    string uri = Url.Link("DefaultApi", new { Id = <#= EntityNameParameter #>.Id });
+                    response.Headers.Location = new Uri(uri);
+                    return response;
+                }
+                catch (Exception ex) {
+                    return Request.CreateErrorResponse(HttpStatusCode.NotModified, ex.Message);
+                }
+            }
+            else {
+                return Request.CreateErrorResponse(HttpStatusCode.BadRequest, ModelState);                
+            }
+        }
+
+        // PUT /api/<#= EntityName #>/3
+        public HttpResponseMessage Put(int Id, <#= EntityName #> <#= EntityNameParameter #>)
+        {
+            if (ModelState.IsValid) {
+                try {
+                    int numRowsAffected = _<#= EntityNameParameter #>Repository.Update(<#= EntityNameParameter #>);
+                    var response = Request.CreateResponse<CrudResult>(HttpStatusCode.OK, new CrudResult(CrudStatusCode.Success, numRowsAffected, new List<<#= EntityName #>> { <#= EntityNameParameter #> }));
+                    string uri = Url.Link("DefaultApi", new { Id = <#= EntityNameParameter #>.Id });
+                    response.Headers.Location = new Uri(uri);
+                    return response;
+                }
+                catch (Exception ex) {
+                    return Request.CreateErrorResponse(HttpStatusCode.NotModified, ex.Message);
+                }
+            }
+            else {
+                return Request.CreateErrorResponse(HttpStatusCode.BadRequest, ModelState);
+            }
+        }
+
+        // DELETE /api/<#= EntityName #>/3
+        public HttpResponseMessage Delete(int Id)
+        {
+            try {
+                <#= EntityName #> <#= EntityNameParameter #> = _<#= EntityNameParameter #>Repository.Get<#= EntityName #>(Id);
+                int numRowsAffected = _<#= EntityNameParameter #>Repository.Delete(Id);
+                var response = Request.CreateResponse<CrudResult>(HttpStatusCode.OK, new CrudResult(CrudStatusCode.Success, numRowsAffected, new List<<#= EntityName #>> { <#= EntityNameParameter #> }));
+                string uri = Url.Link("DefaultApi", new { Id = <#= EntityNameParameter #>.Id });
+                response.Headers.Location = new Uri(uri);
+                return response;
+            }
+            catch (Exception ex) {
+                return Request.CreateErrorResponse(HttpStatusCode.NotModified, ex.Message);
+            }
+        }
+    }
+}

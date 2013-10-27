@@ -1,0 +1,409 @@
+﻿<#@ assembly name="System.Data" #>
+<#@ assembly name="System.Core" #>
+<#@ assembly name="System.Runtime" #>
+<#@ assembly name="System.Xml" #>
+<#@ assembly Name="Microsoft.SqlServer.ConnectionInfo" #>
+<#@ assembly Name="Microsoft.SqlServer.Smo" #>
+<#@ assembly Name="Microsoft.SqlServer.Management.Sdk.Sfc" #>
+<#@ assembly name="EnvDTE" #>
+<#@ import namespace="System.Collections.Generic" #>
+<#@ import namespace="System.Data" #>
+<#@ import namespace="System.Linq" #>
+<#@ import namespace="System.Text" #>
+<#@ import namespace="System.Data" #>
+<#@ import namespace="System.Collections.Generic" #>
+<#@ import Namespace="Microsoft.SqlServer.Management.Smo" #>
+<#@ import namespace="EnvDTE" #>
+<#  string AppName= "PrismTable";
+    string DatabaseName= "PrismTemplatesDatabaseName";
+    string DatabaseServerName = "DELL15z";
+    string DalEF4EntitiesName = "PrismTemplatesDatabaseNameEntities";
+	string DalEF4Namespace = "PrismTable.DalEF4";
+    string DalEF4RepositoriesNamespace = "PrismTable.DalEF4.Repositories";
+    string DalInterfaceModelsNamespace = "PrismTable.DalInterface.Models";
+    string DalInterfaceRepositoriesNamespace = "PrismTable.DalInterface.Repositories";
+    string DalInterfaceStringsNamespace = "PrismTable.DalInterface.Strings.en_US";
+    string DalMemoryRepositoriesNamespace = "PrismTable.DalMemory.Repositories";
+    string UILayerNamespace = "PrismTable.UILayer";
+    string UILayerBehaviorsNamespace = "PrismTable.UILayer.Behaviors";
+    string UILayerControlsNamespace = "PrismTable.UILayer.Controls";
+    string UILayerConvertersNamespace = "PrismTable.UILayer.Converters";
+    string UILayerServicesNamespace = "PrismTable.UILayer.Services";
+    string UILayerViewsNamespace = "PrismTable.UILayer.Views";
+    string UILogicNamespace = "PrismTable.UILogic";
+    string UILogicEventsNamespace = "PrismTable.UILogic.Events";
+    string UILogicModelsNamespace = "PrismTable.UILogic.Models";
+    string UILogicRepositoriesNamespace = "PrismTable.UILogic.Repositories";
+    string UILogicServicesNamespace = "PrismTable.UILogic.Services";
+    string UILogicViewModelsNamespace = "PrismTable.UILogic.ViewModels";
+    string WebAPINamespace = "PrismTable.WebAPI";
+    string WebAPIControllersNamespace = "PrismTable.WebAPI.Controllers";
+    string WebAPIFiltersNamespace = "PrismTable.WebAPI.Filters";
+    string WebAPIStringsNamespace = "PrismTable.WebAPI.Strings.en_US";
+    string PrismPubSubEventsNamespace= "Microsoft.Practices.Prism.PubSubEvents";
+    string PrismStoreAppsNamespace= "Microsoft.Practices.Prism.StoreApps";
+    string PrismStoreAppsInterfacesNamespace= "Microsoft.Practices.Prism.StoreApps.Interfaces";
+    string ServerAddressAzure = "http://bigbrotherwebapi.azurewebsites.net";
+    string ServerAddressIIS = "http://192.168.1.11:8082";
+    string ServerAddressIISExpress = "http://localhost:59444";
+    string ServerAddressVSDev = "http://localhost:50909";
+    string UnityNamespace = "Microsoft.Practices.Unity";
+
+    Server server = new Server(DatabaseServerName);
+	Database database = server.Databases[DatabaseName];
+#><#+
+    private string SqlTypeToString(string sqlType, string columnName) {
+        string toString = string.Empty;
+
+        switch (sqlType) {
+            case "int":
+                if (columnName != "Id") {
+                    toString = ".ToString()";
+                }
+                break;
+            case "bit":
+                toString = ".ToString()";
+                break;
+            case "datetime":
+                toString = ".ToShortDateString()";
+                break;
+            case "money":
+                toString = ".ToString()";
+                break;
+            default:
+                break;
+        }
+
+        return toString;
+    }
+
+    private string SqlTypeParsedToString(string sqlType, string entityName, string columnName) {
+        string parsedToString = string.Empty;
+
+        switch (sqlType) {
+            case "int":
+                if (columnName != "Id") {
+                    parsedToString = string.Format("int.Parse(i{0}.{1})", entityName, columnName);
+                }
+                else {
+                    parsedToString = string.Format("i{0}.{1}", entityName, columnName);
+                }
+                break;
+            case "bit":
+                parsedToString = string.Format("bool.Parse(i{0}.{1})", entityName, columnName);
+                break;
+            case "datetime":
+                parsedToString = string.Format("DateTime.Parse(i{0}.{1})", entityName, columnName);
+                break;
+            case "money":
+                parsedToString = string.Format("decimal.Parse(i{0}.{1})", entityName, columnName);
+                break;
+            default:
+                parsedToString = string.Format("i{0}.{1}", entityName, columnName);
+                break;
+        }
+
+        return parsedToString;
+    }
+
+    private bool IsValueType(string sqlType) {
+        bool isCSharpValueType = false;
+
+        switch (sqlType) {
+            case "int":
+                isCSharpValueType = true;
+                break;
+            case "bit":
+                isCSharpValueType = true;
+                break;
+            case "datetime":
+                isCSharpValueType = true;
+                break;
+            case "money":
+                isCSharpValueType = true;
+                break;
+            default:
+                break;
+        }
+
+        return isCSharpValueType;
+    }
+
+    private string AddConverter(string sqlType) {
+        string strConverter = string.Empty;
+
+        switch (sqlType) {
+            case "bit":
+                strConverter = @", Converter={StaticResource BooleanConverter}";
+                break;
+            case "datetime":
+                strConverter = @", Converter={StaticResource DateTimeConverter}";
+                break;
+            case "money":
+                strConverter = @", Converter={StaticResource DecimalConverter}";
+                break;
+            default:
+                break;
+        }
+
+        return strConverter;
+    }
+
+    private int WriteDalInterfaceRules(Server server, string databaseName, string tableName, string columnName, string columnDataType, string rulesTableName, bool clientSide) {
+        int rulesCount = 0;
+        List<string> rules = null;
+        rules = GetRules(server, databaseName, tableName, columnName, rulesTableName, clientSide);
+
+        if (rules != null && rules.Count > 0) {
+            rulesCount = rules.Count;
+        
+            bool isRequiredPresent= false;
+            foreach(string rule in rules) {
+                if (rule.StartsWith(@"[Required")) {
+                    isRequiredPresent = true;
+                    break;
+                }
+            }
+
+            foreach(string rule in rules) {
+                WriteLine(rule);
+            }
+        }
+        return rulesCount;
+    }
+
+    private void WriteUILogicRules(Server server, string databaseName, string tableName, string columnName, string columnDataType, string rulesTableName, bool clientSide) {
+        List<string> rules = null;
+        rules = GetRules(server, databaseName, tableName, columnName, rulesTableName, clientSide);
+
+        if (rules != null && rules.Count > 0) {
+            foreach(string rule in rules) {
+                WriteLine(rule);
+            }
+        }
+    }
+
+    private List<string> GetRules(Server server, string databaseName, string tableName, string columnName, string rulesTableName, bool clientSide) {
+        List<string> rules = new List<string>();
+
+        // Creates the dataset that holds the query results.
+        DataSet ds = null;
+
+        try
+        {
+            if (server != null)
+            {
+                /// Retrieves the database from the server class instance.
+                Database db = server.Databases[databaseName];
+
+                if (db != null)
+                {
+                    /// Creates a SQL statement.
+                    string sql = string.Format("SELECT ValidationRule FROM {0} WITH(NOLOCK) Where TableName = '{1}' AND ColumnName = '{2}' AND ClientSide = '{3}'", rulesTableName, tableName, columnName, clientSide.ToString());
+                    //WriteLine(sql);
+
+                    /// Executes the query
+                    ds = db.ExecuteWithResults(sql);
+
+                    if ((ds != null) && (ds.Tables.Count > 0) && (ds.Tables[0].Rows.Count > 0))
+                    {
+                        // Loops through all rows in the table and display the results.
+                         foreach (DataRow row in ds.Tables[0].Rows)
+                        {
+                             rules.Add((string)row["ValidationRule"]);
+                        }
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            WriteLine(ex.Message);
+        }
+        finally
+        {
+            /// Releases resources
+            if (ds != null)
+            {
+                ds.Dispose();
+                ds = null;
+            }
+        }
+
+        return rules;
+    }
+
+    private int WriteDalInterfaceResxStrings(Server server, string databaseName, string stringsTableName, bool clientSide) {
+        int stringsListCount = 0;
+        List<Strings> stringsList = null;
+        stringsList = GetStringsList(server, databaseName, stringsTableName, clientSide);
+
+        if (stringsList != null && stringsList.Count > 0) {
+            stringsListCount = stringsList.Count;
+
+            foreach(Strings strs in stringsList) {
+                WriteLine(string.Format("<data name=\"{0}\" xml:space=\"preserve\">",strs.StringKey));
+                PushIndent("\t");
+                WriteLine(string.Format("<value>{0}</value>",strs.StringValue));
+                WriteLine(string.Format("<comment>{0}</comment>",strs.StringComment));
+                PopIndent();
+                WriteLine("</data>");
+            }     
+        }
+        return stringsListCount;
+    }
+
+    private int WriteDalInterfaceDesignerStrings(Server server, string databaseName, string stringsTableName, bool clientSide) {
+        int stringsListCount = 0;
+        List<Strings> stringsList = null;
+        stringsList = GetStringsList(server, databaseName, stringsTableName, clientSide);
+
+        if (stringsList != null && stringsList.Count > 0) {
+            stringsListCount = stringsList.Count;
+
+            foreach(Strings strs in stringsList) {
+                PushIndent("\t");
+                WriteLine(string.Format(@"internal static string {0} {{", strs.StringKey));
+                    PushIndent("\t");
+                    WriteLine("get {");
+                        PushIndent("\t");
+                        WriteLine(string.Format("return ResourceManager.GetString(\"{0}\", resourceCulture);",strs.StringKey));
+                        PopIndent();
+                    WriteLine("}");
+                    PopIndent();
+                WriteLine("}");
+                PopIndent();
+                WriteLine("");
+            }        
+        }
+        return stringsListCount;
+    }
+
+    private int WriteUILayerReswStrings(Server server, string databaseName, string stringsTableName, bool clientSide) {
+        int stringsListCount = 0;
+        List<Strings> stringsList = null;
+        stringsList = GetStringsList(server, databaseName, stringsTableName, clientSide);
+
+        if (stringsList != null && stringsList.Count > 0) {
+            stringsListCount = stringsList.Count;
+        
+            foreach(Strings strs in stringsList) {
+                WriteLine(string.Format("<data name=\"{0}\" xml:space=\"preserve\">",strs.StringKey));
+                PushIndent("\t");
+                WriteLine(string.Format("<value>{0}</value>",strs.StringValue));
+                WriteLine(string.Format("<comment>{0}</comment>",strs.StringComment));
+                PopIndent();
+                WriteLine("</data>");
+            }
+        }
+        return stringsListCount;
+    }
+
+    private int WriteUILogicErrorMessagesHelperStrings(Server server, string databaseName, string stringsTableName, bool clientSide) {
+        int stringsListCount = 0;
+        List<Strings> stringsList = null;
+        stringsList = GetStringsList(server, databaseName, stringsTableName, clientSide);
+
+        if (stringsList != null && stringsList.Count > 0) {
+            stringsListCount = stringsList.Count;
+        
+            PushIndent("\t\t");
+            foreach(Strings strs in stringsList) {
+                WriteLine(string.Format(@"public static string {0} {{", strs.EMHStringName));
+                PushIndent("\t");
+                Write("get { ");
+                WriteLine(string.Format(@"return ResourceLoader.GetString(""{0}""); }}", strs.StringKey));
+                PopIndent();
+                WriteLine("}");
+                WriteLine(string.Empty);
+            }
+            PopIndent();
+        }
+        return stringsListCount;
+    }
+
+    private List<Strings> GetStringsList(Server server, string databaseName, string stringsTableName, bool clientSide) {
+        List<Strings> stringsList = new List<Strings>();
+
+        // Creates the dataset that holds the query results.
+        DataSet ds = null;
+
+        try
+        {
+            if (server != null)
+            {
+                /// Retrieves the database from the server class instance.
+                Database db = server.Databases[databaseName];
+
+                if (db != null)
+                {
+                    /// Creates a SQL statement.
+                    string sql = string.Format("SELECT StringKey, StringValue, StringComment, EMHStringName FROM {0} WITH(NOLOCK) Where ClientSide = '{1}'", stringsTableName, clientSide.ToString());
+                    //WriteLine(sql);
+
+                    /// Executes the query
+                    ds = db.ExecuteWithResults(sql);
+
+                    if ((ds != null) && (ds.Tables.Count > 0) && (ds.Tables[0].Rows.Count > 0))
+                    {
+                        // Loops through all rows in the table and display the results.
+                         Strings strs = null;
+                         foreach (DataRow row in ds.Tables[0].Rows)
+                        {
+                             strs = new Strings((string)row["StringKey"], (string)row["StringValue"], (string)row["StringComment"], (string)row["EMHStringName"]);
+                             stringsList.Add(strs);
+                        }
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            WriteLine(ex.Message);
+        }
+        finally
+        {
+            /// Releases resources
+            if (ds != null)
+            {
+                ds.Dispose();
+                ds = null;
+            }
+        }
+
+        return stringsList;
+    }
+
+    private string CollapseField(string columnName) {
+        if (columnName == "MarkedToDelete") {
+            return "Collapsed";
+        }
+        else {
+            return "Visible";
+        }
+    }
+
+    private string IsReadOnly(string columnName) {
+        if (columnName == "Id" || columnName == "MarkedToDelete") {
+            return "True";
+        }
+        else {
+            return "False";
+        }
+    }
+
+    class Strings {
+        public string StringKey{get; set;}
+        public string StringValue{get; set;}
+        public string StringComment{get; set;}
+        public string EMHStringName{get; set;}
+
+        public Strings (string stringKey, string stringValue, string stringComment, string emhStringName) {
+            StringKey = stringKey;
+            StringValue = stringValue;
+            StringComment = stringComment;
+            EMHStringName = emhStringName;
+        }
+    }
+
+ #>

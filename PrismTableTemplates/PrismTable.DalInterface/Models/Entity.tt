@@ -1,0 +1,41 @@
+﻿<#@ template debug="false" hostspecific="true" language="C#" #>
+<#@ output extension=".cs" #>
+<#@ include file="..\..\CommonTableTemplate\CommonTableTemplate.tt"#>
+<#
+    string EntityName = "Entity";
+    string EntityTablename = "Entity";
+    string RulesTableName = "CodeGenRules";
+
+    Table table = database.Tables[EntityTablename];
+    table.Refresh();
+#>
+using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.Linq;
+using System.Runtime.Serialization;
+using System.Text;
+using System.Threading.Tasks;
+using <#= DalInterfaceStringsNamespace #>;
+
+namespace <#= DalInterfaceModelsNamespace #> 
+{
+    public class <#= EntityName #> 
+    { 
+        public <#= EntityName #>() {
+            MarkedToDelete = "false";
+        }
+
+<#
+PushIndent("\t\t");
+int rulesCount;
+foreach (Column column in table.Columns)
+{
+    rulesCount = WriteDalInterfaceRules(server, DatabaseName, table.Name, column.Name, column.DataType.ToString(), RulesTableName, false);
+    WriteLine(string.Format(@"public {0} {1} {{ get; set; }}", column.Name == "Id" ? "int" : "string", column.Name));
+    WriteLine(string.Empty);
+}         
+PopIndent();
+#>
+    }
+}

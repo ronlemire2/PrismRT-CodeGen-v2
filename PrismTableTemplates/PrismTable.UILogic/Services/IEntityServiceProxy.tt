@@ -1,0 +1,30 @@
+﻿<#@ template debug="false" hostspecific="true" language="C#" #>
+<#@ output extension=".cs" #>
+<#@ include file="..\..\CommonTableTemplate\CommonTableTemplate.tt"#>
+<#
+    string EntityKey = "EntityId";
+    string EntityKeyParameter = "entityId";
+    string EntityName = "Entity";
+    string EntityNamePlural = "Entities";
+    string EntityNameParameter = "entity";
+    string EntityNamePluralParameter = "entities";
+#>
+using <#= UILogicModelsNamespace #>;
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace <#= UILogicServicesNamespace #>
+{
+    public interface I<#= EntityName #>ServiceProxy
+    {
+        Task<CrudResult> Get<#= EntityNamePlural #>Async();
+        Task<CrudResult> Get<#= EntityName #>Async(int <#= EntityKeyParameter #>);
+        Task<CrudResult> Create<#= EntityName #>Async(<#= EntityName #> <#= EntityKeyParameter #>);
+        Task<CrudResult> Update<#= EntityName #>Async(<#= EntityName #> phoneCall);
+        Task<CrudResult> Delete<#= EntityName #>Async(int <#= EntityKeyParameter #>);
+    }
+}

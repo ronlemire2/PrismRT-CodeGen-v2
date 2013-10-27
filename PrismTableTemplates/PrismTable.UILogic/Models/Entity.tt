@@ -1,0 +1,55 @@
+﻿<#@ template debug="false" hostspecific="true" language="C#" #>
+<#@ output extension=".cs" #>
+<#@ include file="..\..\CommonTableTemplate\CommonTableTemplate.tt"#>
+<#
+    string EntityName = "Entity";
+    string EntityTablename = "Entity";
+    string RulesTableName = "CodeGenRules";
+
+    Table table = database.Tables[EntityTablename];
+    table.Refresh();
+#>
+using <#= UILogicServicesNamespace #>;
+using <#= PrismStoreAppsNamespace #>;
+using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.Linq;
+using System.Runtime.Serialization;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace <#= UILogicModelsNamespace #>
+{
+    public class <#= EntityName #> : ValidatableBindableBase
+    {
+<#
+PushIndent("\t\t");
+foreach (Column column in table.Columns)
+{
+        WriteLine(string.Format(@"private {0} _{1};", column.Name == "Id" ? "int" : "string", column.Name));
+}         
+    WriteLine(string.Empty);
+PopIndent();
+#>
+        public <#= EntityName #>() {
+            _MarkedToDelete = "false";
+        }
+
+<#
+PushIndent("\t\t");
+foreach (Column column in table.Columns)
+{
+        WriteUILogicRules(server, DatabaseName, table.Name, column.Name, column.DataType.ToString(), RulesTableName, true);
+        WriteLine(string.Format(@"public {0} {1} {{", column.Name == "Id" ? "int" : "string", column.Name));
+        PushIndent("\t");
+        WriteLine(string.Format(@"get {{ return _{0}; }}", column.Name));
+        WriteLine(string.Format(@"set {{ SetProperty(ref _{0}, value); }}", column.Name));
+        PopIndent();
+        WriteLine("}");
+        WriteLine(string.Empty);
+}         
+PopIndent();
+#>
+    }
+}

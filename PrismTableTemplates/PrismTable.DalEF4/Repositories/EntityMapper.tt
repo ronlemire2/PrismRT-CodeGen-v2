@@ -1,0 +1,71 @@
+﻿<#@ template debug="false" hostspecific="true" language="C#" #>
+<#@ output extension=".cs" #>
+<#@ include file="..\..\CommonTableTemplate\CommonTableTemplate.tt"#>
+<#
+    string EntityName = "Entity";
+    string EntityNamePlural = "Entities";
+    string EntityTablename = "Entity";
+    
+    Table table = database.Tables[EntityTablename];
+    table.Refresh();
+#>
+using <#= DalEF4Namespace #>;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace <#= DalEF4RepositoriesNamespace #>
+{
+    public class <#= EntityName #>Mapper
+    {
+        #region Map DataAccessEntities to DalInterfaceEntities
+
+        public static IEnumerable<DalInterface.Models.<#= EntityName #>> MapDataAccess<#= EntityNamePlural #>ToDalInterface<#= EntityNamePlural #>(IEnumerable<<#= EntityName #>> da<#= EntityNamePlural #>) {
+            List<DalInterface.Models.<#= EntityName #>> i<#= EntityNamePlural #> = new List<DalInterface.Models.<#= EntityName #>>();
+
+            foreach (<#= EntityName #> da<#= EntityName #> in da<#= EntityNamePlural #>) {
+                i<#= EntityNamePlural #>.Add(<#= EntityName #>Mapper.MapDataAccess<#= EntityName #>ToDalInterface<#= EntityName #>(da<#= EntityName #>));
+            }
+
+            return i<#= EntityNamePlural #>;
+        }
+
+        public static DalInterface.Models.<#= EntityName #> MapDataAccess<#= EntityName #>ToDalInterface<#= EntityName #>(<#= EntityName #> da<#= EntityName #>) {
+            DalInterface.Models.<#= EntityName #> i<#= EntityName #> = new DalInterface.Models.<#= EntityName #>();
+
+<#
+PushIndent("\t\t\t");
+foreach (Column column in table.Columns)
+{
+        WriteLine(string.Format(@"i{0}.{1} = da{2}.{3}{4};", EntityName, column.Name, EntityName, column.Name, SqlTypeToString(column.DataType.ToString(), column.Name)));
+}  
+PopIndent();
+#>
+
+            return i<#= EntityName #>;
+        }
+        
+        #endregion
+
+        #region Map DalInterfaceEntities to DataAccessEntities
+
+        public static <#= EntityName #> MapDalInterface<#= EntityName #>ToDataAccess<#= EntityName #>(DalInterface.Models.<#= EntityName #> i<#= EntityName #>) {
+            <#= EntityName #> da<#= EntityName #> = new <#= EntityName #>();
+
+<#
+PushIndent("\t\t\t");
+foreach (Column column in table.Columns)
+{
+    WriteLine(string.Format(@"da{0}.{1} = {2};", EntityName, column.Name, SqlTypeParsedToString(column.DataType.ToString(), EntityName, column.Name)));
+}  
+PopIndent();
+#>
+
+            return da<#= EntityName #>;
+        }
+
+        #endregion
+    }
+}

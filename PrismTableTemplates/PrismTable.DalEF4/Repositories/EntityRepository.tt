@@ -1,0 +1,139 @@
+﻿<#@ template debug="false" hostspecific="true" language="C#" #>
+<#@ output extension=".cs" #>
+<#@ include file="..\..\CommonTableTemplate\CommonTableTemplate.tt"#>
+<#
+    string EntityKeyParameter = "entityId";
+    string EntityName = "Entity";
+    string EntityNamePlural = "Entities";
+    string EntityTablename = "Entity";
+
+    Table table = database.Tables[EntityTablename];
+    table.Refresh();
+#>
+using <#= DalEF4Namespace #>;
+using <#= DalInterfaceRepositoriesNamespace #>;
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace <#= DalEF4RepositoriesNamespace #>
+{
+    public class <#= EntityName #>Repository : RepositoryBase, I<#= EntityName #>Repository
+    {
+        // Get all <#= EntityNamePlural #>
+        public IEnumerable<DalInterface.Models.<#= EntityName #>> Get<#= EntityNamePlural #>() {
+            var  da<#= EntityNamePlural #> = default(IEnumerable<<#= EntityName #>>);
+
+            da<#= EntityNamePlural #> = _dbContext.<#= EntityNamePlural #>
+                .OrderBy(e => e.Id);
+            IEnumerable<DalInterface.Models.<#= EntityName #>> i<#= EntityNamePlural #> = <#= EntityName #>Mapper.MapDataAccess<#= EntityNamePlural #>ToDalInterface<#= EntityNamePlural #>(da<#= EntityNamePlural #>);
+
+            return i<#= EntityNamePlural #>;
+        }
+
+        // Get a <#= EntityName #> by Id
+        public DalInterface.Models.<#= EntityName #> Get<#= EntityName #>(int <#= EntityKeyParameter #>) {
+            <#= EntityName #> da<#= EntityName #> = default(<#= EntityName #>);
+
+            da<#= EntityName #> = _dbContext.<#= EntityNamePlural #>
+               .Where(e => e.Id == <#= EntityKeyParameter #>).FirstOrDefault();
+
+            return <#= EntityName #>Mapper.MapDataAccess<#= EntityName #>ToDalInterface<#= EntityName #>(da<#= EntityName #>);
+        }
+
+        // Create a new <#= EntityName #>
+        public DalInterface.Models.<#= EntityName #> Create(DalInterface.Models.<#= EntityName #> i<#= EntityName #>) {
+            var result = 0;
+
+            <#= EntityName #> da<#= EntityName #> = <#= EntityName #>Mapper.MapDalInterface<#= EntityName #>ToDataAccess<#= EntityName #>(i<#= EntityName #>);
+
+            try {
+                this._dbContext.<#= EntityNamePlural #>.Add(da<#= EntityName #>);
+                result = this._dbContext.SaveChanges();
+
+                // DbContext sets Id to the new Identity value.
+                i<#= EntityName #>.Id = da<#= EntityName #>.Id;
+            }
+            catch (System.Data.UpdateException ex) {
+                if (ex.InnerException != null && ex.InnerException is System.Data.SqlClient.SqlException
+                   && ((System.Data.SqlClient.SqlException)ex.InnerException).ErrorCode == 8152)
+                    throw ex.InnerException;
+                else
+                    throw ex;
+            }
+
+            return i<#= EntityName #>;
+        }
+
+        // Update an existing <#= EntityName #>
+        public int Update(DalInterface.Models.<#= EntityName #> i<#= EntityName #>) {
+            var result = 0;
+            <#= EntityName #> daLoaded<#= EntityName #> = null;
+            <#= EntityName #> da<#= EntityName #> = <#= EntityName #>Mapper.MapDalInterface<#= EntityName #>ToDataAccess<#= EntityName #>(i<#= EntityName #>);
+
+            try {
+                // Load object into context (entity framework) 
+                daLoaded<#= EntityName #> = _dbContext.<#= EntityNamePlural #>.Where(pc => pc.Id == i<#= EntityName #>.Id).FirstOrDefault();
+
+                if (daLoaded<#= EntityName #> == null) { //not found?
+                    throw new Exception("<#= EntityName #> not found to update");
+                }
+                else {
+                    // Update
+                    _dbContext.Entry(daLoaded<#= EntityName #>).CurrentValues.SetValues(da<#= EntityName #>);
+                }
+
+                // Save in data access (entity framework)
+                result = this._dbContext.SaveChanges();
+            }
+            catch (System.Data.UpdateException ex) {
+                if (ex.InnerException != null && ex.InnerException is System.Data.SqlClient.SqlException
+                   && ((System.Data.SqlClient.SqlException)ex.InnerException).ErrorCode == 8152)
+                    throw ex.InnerException;
+                else
+                    throw ex;
+            }
+
+            return result;
+        }
+
+        // Delete an existing <#= EntityName #>
+        public int Delete(int i<#= EntityName #>Id) {
+            var result = 0;
+            <#= EntityName #> daLoaded<#= EntityName #> = null;
+
+            try {
+                // Load object into context (entity framework) 
+                daLoaded<#= EntityName #> = _dbContext.<#= EntityNamePlural #>.Where(pc => pc.Id == i<#= EntityName #>Id).FirstOrDefault();
+
+                // Modify the context
+                if (daLoaded<#= EntityName #> == null) { //not found?
+                    throw new Exception("<#= EntityName #> not found to delete");
+                }
+                else {
+                    // Delete
+                    this._dbContext.<#= EntityNamePlural #>.Remove(daLoaded<#= EntityName #>);
+                }
+
+                // Save in data access (entity framework)
+                result = this._dbContext.SaveChanges();
+            }
+            catch (System.Data.UpdateException ex) {
+                if (ex.InnerException != null && ex.InnerException is System.Data.SqlClient.SqlException
+                   && ((System.Data.SqlClient.SqlException)ex.InnerException).ErrorCode == 8152)
+                    throw ex.InnerException;
+                else
+                    throw ex;
+            }
+
+            return result;
+        }
+
+        public void Reset() {
+            throw new NotImplementedException();
+        }
+    }
+}

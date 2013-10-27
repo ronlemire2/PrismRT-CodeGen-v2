@@ -1,0 +1,113 @@
+﻿======== AdventureWorks ===================================================================================
+        
+		// GET /api/Product
+		http://localhost:2112/api/Product/
+		Composer->RequestHeaders-> (Accept header is the format of return data)
+			Accept: application/json
+			Accept: application/xml
+
+        public IEnumerable<Product> GetProducts()
+			return _products.ToArray();
+			
+        
+		// GET /api/Product/id    
+		http://localhost:2112/api/Product/BK-R19B-58
+        public Product GetProduct(string id)
+			var item = _productRepository.GetProduct(id);
+		        public Product GetProduct(string productNumber)
+				
+		
+		// GET /api/Product?queryString={queryString}
+		http://localhost:2112/api/Product?queryString=Mountain-500%20Red,%2042
+        public SearchResult GetSearchResults(string queryString)
+			var fullsearchResult = _productRepository.GetProducts().Where(p => p.Title.ToUpperInvariant().Contains(queryString.ToUpperInvariant()));
+			
+		
+        // GET /api/Product?categoryId={categoryId}
+		http://localhost:2112/api/Product?categoryId=2
+        public IEnumerable<Product> GetProducts(int categoryId)
+		    if (categoryId == 0)
+            {
+                return _productRepository.GetTodaysDealsProducts();
+            }
+            return _productRepository.GetProductsForCategory(categoryId);
+
+
+======== BigBrother ===================================================================================
+
+		GET http://dell15z:8082/api/PhoneCall
+		GET http://dell15z:8082/api/PhoneCall/1
+		GET http://dell15z:8082/api/PhoneCall?SSN=987654321
+
+		POST	http://dell15z:8082/api/PhoneCall
+		POST	http://localhost:59444/api/PhoneCall	
+		Composer->RequestHeaders->
+			Accept: application/json (format for return data is not necessary)
+			Content-Type: application/json
+			User-Agent: Fiddler
+			Host: dell15z:8082
+		Composer->RequestBody
+			{"Id":"0","SSN":"333333333"}
+
+		PUT		http://dell15z:8082/api/PhoneCall/3
+		PUT		http://localhost:59444/api/PhoneCall/3
+		Composer->RequestHeaders->
+			Accept: application/json
+			Content-Type: application/json
+			User-Agent: Fiddler
+			Host: dell15z:8082
+			Content-Length: 28
+		Composer->RequestBody
+			{"Id":"3","SSN":"999999999"}
+
+		DELETE	http://dell15z:8082/api/PhoneCall/3
+		DELETE	http://localhost:59444//api/PhoneCall/3
+		Composer->RequestHeaders->
+			Accept: application/json
+			User-Agent: Fiddler
+			Host: dell15z:8082
+
+
+========= PluralSight ==================================================================================
+
+public class ValuesController : ApiController
+{
+	static List<string> data = initList();
+
+	private static List<string> initList()
+	{
+		var ret new List<string>();
+		ret.Add("value1");
+		ret.Add("value2");
+		return ret;
+	}
+
+	// GET api/values
+	public IEnumerable<string> Get()
+	{
+		return data;
+	}
+
+	// GET api/values/5
+	public string Get(int id)
+	{
+		return data[id];
+	}
+
+	// POST api/values
+	public void Post([FromBody]string value)
+	{
+		data.Add(value);
+	}
+
+	// PUT api/values/5
+	public void Put(int id, [FromBody] string value)
+	{
+		data[id] = value;
+	}
+
+	// DELETE api/values/5
+	public void Delete(int id)
+	{
+		data.RemoveAt(id);
+	}

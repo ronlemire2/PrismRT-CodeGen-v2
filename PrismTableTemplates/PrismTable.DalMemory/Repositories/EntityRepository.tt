@@ -1,0 +1,82 @@
+﻿<#@ template debug="false" hostspecific="true" language="C#" #>
+<#@ output extension=".cs" #>
+<#@ include file="..\..\CommonTableTemplate\CommonTableTemplate.tt"#>
+<#
+    string EntityKeyParameter = "entityId";
+    string EntityName = "Entity";
+    string EntityNamePlural = "Entities";
+    string EntityNameParameter= "entity";
+    string EntityNameParameterPlural = "entities";
+#>
+using <#= DalInterfaceModelsNamespace #>;
+using <#= DalInterfaceRepositoriesNamespace #>;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace <#= DalMemoryRepositoriesNamespace #>
+{
+    public class <#= EntityName #>Repository : I<#= EntityName #>Repository
+    {
+        private static List<<#= EntityName #>> _<#= EntityNameParameterPlural #> = Populate<#= EntityNamePlural #>();
+        private static int _nextId = 3;
+
+        private static List<<#= EntityName #>> Populate<#= EntityNamePlural #>() {
+            var <#= EntityNameParameterPlural #> = new List<<#= EntityName #>>();
+            <#= EntityNameParameterPlural #>.Add(new <#= EntityName #>
+            {
+                Id = 1
+            });
+            <#= EntityNameParameterPlural #>.Add(new <#= EntityName #>
+            {
+                Id = 2
+            });
+            return <#= EntityNameParameterPlural #>;
+        }
+
+        public IEnumerable<<#= EntityName #>> Get<#= EntityNamePlural #>() {
+            lock (_<#= EntityNameParameterPlural #>) {
+                // Return new collection so callers can iterate independently on separate threads
+                return _<#= EntityNameParameterPlural #>.ToArray();
+            }
+        }
+
+        public <#= EntityName #> Get<#= EntityName #>(int <#= EntityKeyParameter #>) {
+            lock (_<#= EntityNameParameterPlural #>) {
+                return _<#= EntityNameParameterPlural #>.FirstOrDefault(e => e.Id == <#= EntityKeyParameter #>);
+            }
+        }
+
+        public <#= EntityName #> Create(<#= EntityName #> <#= EntityNameParameter #>) {
+            if (<#= EntityNameParameter #> == null) {
+                throw new ArgumentNullException("<#= EntityNameParameter #>");
+            }
+            <#= EntityNameParameter #>.Id = _nextId++;
+            _<#= EntityNameParameterPlural #>.Add(<#= EntityNameParameter #>);
+            return <#= EntityNameParameter #>;
+        }
+
+        public int Update(<#= EntityName #> <#= EntityNameParameter #>) {
+            if (<#= EntityNameParameter #> == null) {
+                throw new ArgumentNullException("<#= EntityNameParameter #>");
+            }
+            int index = _<#= EntityNameParameterPlural #>.FindIndex(e => e.Id == <#= EntityNameParameter #>.Id);
+            if (index == -1) {
+                return 0;
+            }
+            _<#= EntityNameParameterPlural #>.RemoveAt(index);
+            _<#= EntityNameParameterPlural #>.Add(<#= EntityNameParameter #>);
+            return 1;
+        }
+
+        public int Delete(int <#= EntityKeyParameter #>) {
+            return _<#= EntityNameParameterPlural #>.RemoveAll(e => e.Id == <#= EntityKeyParameter #>);
+        }
+
+        public void Reset() {
+            throw new NotImplementedException();
+        }
+    }
+}

@@ -1,0 +1,108 @@
+﻿<#@ template debug="false" hostspecific="true" language="C#" #>
+<#@ output extension=".cs" #>
+<#@ include file="..\..\CommonTableTemplate\CommonTableTemplate.tt"#>
+<#
+    string EntityKey = "EntityId";
+    string EntityKeyParameter = "entityId";
+    string EntityName = "Entity";
+    string EntityNamePlural = "Entities";
+    string EntityNameParameter = "entity";
+    string EntityNamePluralParameter = "entities";
+#>
+using <#= UILogicModelsNamespace #>;
+using <#= UILogicRepositoriesNamespace #>;
+using <#= UILogicServicesNamespace #>;
+using <#= PrismPubSubEventsNamespace #>;
+using <#= PrismStoreAppsNamespace #>;
+using <#= PrismStoreAppsInterfacesNamespace #>;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Net.Http;
+using Windows.UI.Popups;
+using Newtonsoft.Json;
+
+namespace <#= UILogicViewModelsNamespace #>
+{
+    public class <#= EntityName #>ListPageViewModel : ViewModel
+    {
+        private I<#= EntityName #>Repository _<#= EntityNameParameter #>Repository;
+        private readonly INavigationService _navService;
+        private readonly IEventAggregator _eventAggregator; 
+        private IReadOnlyCollection<<#= EntityName #>> _<#= EntityNameParameter #>List;
+        private bool _loadingData;
+        private string _errorMessage;
+        private string _errorMessageTitle;
+ 
+        public <#= EntityName #>ListPageViewModel(I<#= EntityName #>Repository <#= EntityNameParameter #>Repository, INavigationService navService, IEventAggregator eventAggregator) {
+            _<#= EntityNameParameter #>Repository = <#= EntityNameParameter #>Repository;
+            _navService = navService;
+            _eventAggregator = eventAggregator;
+            NavCommand = new DelegateCommand<<#= EntityName #>>(OnNavCommand);
+            <#= EntityName #>DetailNavCommand = new DelegateCommand(() => _navService.Navigate("<#= EntityName #>Detail", 0));
+       }
+
+        public DelegateCommand<<#= EntityName #>> NavCommand { get; set; }
+        public DelegateCommand <#= EntityName #>DetailNavCommand { get; set; }
+
+        public IReadOnlyCollection<<#= EntityName #>> <#= EntityName #>List { 
+            get {
+                return _<#= EntityNameParameter #>List;
+            }
+            private set {
+                SetProperty(ref _<#= EntityNameParameter #>List, value);
+            }
+        }
+
+        public bool LoadingData {
+            get { return _loadingData; }
+            private set { SetProperty(ref _loadingData, value); }
+        }
+
+        public string ErrorMessage {
+            get { return _errorMessage; }
+            private set { SetProperty(ref _errorMessage, value); }
+        }
+
+        public string ErrorMessageTitle {
+            get { return _errorMessageTitle; }
+            private set { SetProperty(ref _errorMessageTitle, value); }
+        }
+
+        public async override void OnNavigatedTo(object navigationParameter, Windows.UI.Xaml.Navigation.NavigationMode navigationMode, Dictionary<string, object> viewModelState) {
+            base.OnNavigatedTo(navigationParameter, navigationMode, viewModelState);
+
+            ErrorMessageTitle = string.Empty;
+            ErrorMessage = string.Empty;
+
+            try {
+                LoadingData = true;
+                CrudResult crudResult = await _<#= EntityNameParameter #>Repository.Get<#= EntityNamePlural #>Async();
+                <#= EntityName #>List = JsonConvert.DeserializeObject<List<<#= EntityName #>>>(crudResult.Content.ToString());
+            }
+            catch (HttpRequestException ex) {
+                ErrorMessageTitle = ErrorMessagesHelper.GetAllAsyncFailedError;
+                ErrorMessage = string.Format("{0}{1}", Environment.NewLine, ex.Message);
+            }
+            catch (Exception ex) {
+                ErrorMessageTitle = ErrorMessagesHelper.ExceptionError;
+                ErrorMessage = string.Format("{0}{1}", Environment.NewLine, ex.Message);
+            }
+            finally {
+                LoadingData = false;
+            }
+            if (ErrorMessage != null && ErrorMessage != string.Empty) {
+                MessageDialog messageDialog = new MessageDialog(ErrorMessage, ErrorMessageTitle);
+                await messageDialog.ShowAsync();
+            }
+        }
+
+        private void OnNavCommand(<#= EntityName #> <#= EntityNameParameter #>) {
+            _navService.Navigate("<#= EntityName #>Detail", <#= EntityNameParameter #>.Id);
+        }
+
+
+    }
+}

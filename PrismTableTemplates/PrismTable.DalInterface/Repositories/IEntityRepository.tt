@@ -1,0 +1,30 @@
+﻿<#@ template debug="false" hostspecific="false" language="C#" #>
+<#@ output extension=".cs" #>
+<#@ include file="..\..\CommonTableTemplate\CommonTableTemplate.tt"#>
+<#
+    string EntityKey = "EntityId";
+    string EntityKeyParameter = "entityId";
+    string EntityName = "Entity";
+    string EntityNamePlural = "Entities";
+    string EntityNameParameter = "entity";
+#>
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+using <#= DalInterfaceModelsNamespace #>;
+
+namespace <#= DalInterfaceRepositoriesNamespace #>
+{
+    public interface I<#= EntityName #>Repository
+    {
+        IEnumerable<<#= EntityName #>> Get<#= EntityNamePlural #>();
+        <#= EntityName #> Get<#= EntityName #>(int <#= EntityKeyParameter #>);
+        <#= EntityName #> Create(<#= EntityName #> <#= EntityNameParameter #>);
+        int Update(<#= EntityName #> <#= EntityNameParameter #>);
+        int Delete(int <#= EntityKeyParameter #>);
+        void Reset();
+    }
+}

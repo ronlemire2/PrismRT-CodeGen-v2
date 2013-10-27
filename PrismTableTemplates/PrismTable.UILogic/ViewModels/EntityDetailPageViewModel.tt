@@ -1,0 +1,283 @@
+﻿<#@ template debug="false" hostspecific="true" language="C#" #>
+<#@ output extension=".cs" #>
+<#@ include file="..\..\CommonTableTemplate\CommonTableTemplate.tt"#>
+<#
+    string EntityKey = "EntityId";
+    string EntityKeyParameter = "entityId";
+    string EntityName = "Entity";
+    string EntityNamePlural = "Entities";
+    string EntityNameParameter = "entity";
+    string EntityNamePluralParameter = "entities";
+#>
+using <#= UILogicEventsNamespace #>;
+using <#= UILogicModelsNamespace #>;
+using <#= UILogicRepositoriesNamespace #>;
+using <#= UILogicServicesNamespace #>;
+using <#= PrismPubSubEventsNamespace #>;
+using <#= PrismStoreAppsNamespace #>;
+using <#= PrismStoreAppsInterfacesNamespace #>;
+using Newtonsoft.Json;
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Linq;
+using System.Net.Http;
+using System.Text;
+using System.Threading.Tasks;
+using Windows.UI.Popups;
+using Windows.UI.Xaml;
+
+namespace <#= UILogicViewModelsNamespace #>
+{
+    public class <#= EntityName #>DetailPageViewModel : ViewModel
+    {
+        private I<#= EntityName #>Repository _<#= EntityNameParameter #>Repository;
+        private readonly INavigationService _navService;
+        private readonly IEventAggregator _eventAggregator;
+        private <#= EntityName #> _<#= EntityNameParameter #>;
+        private bool _loadingData;
+        private int _numRowsUpdated;
+        private CrudResult _crudResult;
+        private string _errorMessage;
+        private string _errorMessageTitle;
+
+        public DelegateCommand GoBackCommand { get; private set; }
+        public DelegateCommand New<#= EntityName #>Command { get; private set; }
+        public DelegateCommand Update<#= EntityName #>Command { get; private set; }
+        public DelegateCommand Delete<#= EntityName #>Command { get; private set; }
+        public Action<object> TextBoxLostFocusAction { get; private set; }
+
+        public <#= EntityName #>DetailPageViewModel(I<#= EntityName #>Repository <#= EntityNameParameter #>Repository, INavigationService navService, IEventAggregator eventAggregator) {
+            _<#= EntityNameParameter #>Repository = <#= EntityNameParameter #>Repository;
+            _navService = navService;
+            _eventAggregator = eventAggregator;
+            GoBackCommand = new DelegateCommand(
+                () => _navService.GoBack(),
+                () => _navService.CanGoBack());
+            New<#= EntityName #>Command = new DelegateCommand(OnNew<#= EntityName #>, CanNew<#= EntityName #>);
+            Update<#= EntityName #>Command = new DelegateCommand(OnUpdate<#= EntityName #>, CanUpdate<#= EntityName #>);
+            Delete<#= EntityName #>Command = new DelegateCommand(OnDelete<#= EntityName #>, CanDelete<#= EntityName #>);
+            TextBoxLostFocusAction = OnTextBoxLostFocusAction;
+        }
+
+        [RestorableState]
+        public <#= EntityName #> Selected<#= EntityName #> {
+            get {
+                return _<#= EntityNameParameter #>;
+            }
+            private set {
+                SetProperty(ref _<#= EntityNameParameter #>, value);
+            }
+        }
+
+        public bool LoadingData {
+            get { return _loadingData; }
+            private set { SetProperty(ref _loadingData, value); }
+        }
+
+        public string ErrorMessage {
+            get { return _errorMessage; }
+            private set { SetProperty(ref _errorMessage, value); }
+        }
+
+        public string ErrorMessageTitle {
+            get { return _errorMessageTitle; }
+            private set { SetProperty(ref _errorMessageTitle, value); }
+        }
+
+        public int NumRowsUpdated {
+            get { return _numRowsUpdated; }
+            private set { SetProperty(ref _numRowsUpdated, value); }
+        }
+
+        public CrudResult CrudResult {
+            get { return _crudResult; }
+            private set { SetProperty(ref _crudResult, value); }
+        }
+
+        public async override void OnNavigatedTo(object navigationParameter, Windows.UI.Xaml.Navigation.NavigationMode navigationMode, Dictionary<string, object> viewModelState) {
+            base.OnNavigatedTo(navigationParameter, navigationMode, viewModelState);
+
+            // Note: Each time app selects from main page (<#= EntityName #>ListPage) detail page (<#= EntityName #>DetailPage) is recreated.
+            // Meaning that constructor is run and Selected<#= EntityName #> is null.
+            // If SuspendAndTerminate (e.g. debug mode) Selected<#= EntityName #> is saved to SessionState (because of [RestorableState] attribute).
+            // Therefore, if Selected<#= EntityName #> has been saved, use it instead of doing Get<#= EntityName #>Async.
+            if (Selected<#= EntityName #> == null) {
+                string errorMessage = string.Empty;
+                int <#= EntityNameParameter #>Id = (int)navigationParameter;
+
+                if (<#= EntityNameParameter #>Id == 0) {
+                    Selected<#= EntityName #> = new <#= EntityName #>();
+                    Selected<#= EntityName #>.ValidateProperties();
+                    RunAllCanExecute();
+                }
+                else {
+                    try {
+                        LoadingData = true;
+                        CrudResult = await _<#= EntityNameParameter #>Repository.Get<#= EntityName #>Async(<#= EntityNameParameter #>Id);
+                        Selected<#= EntityName #> = JsonConvert.DeserializeObject<List<<#= EntityName #>>>(CrudResult.Content.ToString()).FirstOrDefault<<#= EntityName #>>();
+                    }
+                    catch (HttpRequestException ex) {
+                        ErrorMessageTitle = ErrorMessagesHelper.HttpRequestExceptionError;
+                        //TODO: Log stack trace to database here
+                        ErrorMessage = string.Format("{0}", ex.Message);
+                    }
+                    finally {
+                        LoadingData = false;
+                    }
+                    if (ErrorMessage != null && ErrorMessage != string.Empty) {
+                        MessageDialog messageDialog = new MessageDialog(ErrorMessage, ErrorMessageTitle);
+                        await messageDialog.ShowAsync();
+                        _navService.GoBack();
+                    }
+                }
+            }
+
+            RunAllCanExecute();
+        }
+
+        // Enable New button when there is no Selected <#= EntityName #>
+        private bool CanNew<#= EntityName #>() {
+            return true;
+        }
+
+        // Disable Update button when there are Errors
+        private bool CanUpdate<#= EntityName #>() {
+			if (Selected<#= EntityName #> != null) {
+	            return Selected<#= EntityName #>.Errors.Errors.Count == 0;
+			}
+			else {
+				return false;
+			}
+        }
+
+        // Enable Delete button when there is a Selected <#= EntityName #>
+        private bool CanDelete<#= EntityName #>() {
+			if (Selected<#= EntityName #> != null) {
+	            return Selected<#= EntityName #>.Id != 0;
+			}
+			else {
+				return false;
+			}            
+        }
+
+        // When New button is pressed
+        private void OnNew<#= EntityName #>() {
+            Selected<#= EntityName #> = new <#= EntityName #>();
+            Selected<#= EntityName #>.ValidateProperties();
+            RunAllCanExecute();
+        }
+
+        // When Update button is pressed
+        private async void OnUpdate<#= EntityName #>() {
+            string errorMessage = string.Empty;
+            bool isCreating = false;
+
+            Selected<#= EntityName #>.ValidateProperties();
+            var updateErrors = Selected<#= EntityName #>.GetAllErrors().Values.SelectMany(pc => pc).ToList();
+
+            if (updateErrors.Count == 0) {
+                try {
+                    LoadingData = true;
+                    if (Selected<#= EntityName #>.Id == 0) {
+                        isCreating = true;
+                        CrudResult = await _<#= EntityNameParameter #>Repository.Create<#= EntityName #>Async(Selected<#= EntityName #>);
+                        Selected<#= EntityName #> = JsonConvert.DeserializeObject<List<<#= EntityName #>>>(CrudResult.Content.ToString()).FirstOrDefault<<#= EntityName #>>();
+                    }
+                    else {
+                        CrudResult = await _<#= EntityNameParameter #>Repository.Update<#= EntityName #>Async(Selected<#= EntityName #>);
+                    }
+                }
+                catch (ModelValidationException mvex) {
+                    // there were server-side validation errors
+                    Display<#= EntityName #>ErrorMessages(mvex.ValidationResult);
+                }
+                catch (HttpRequestException ex) {
+                    ErrorMessageTitle = isCreating ? ErrorMessagesHelper.CreateAsyncFailedError : ErrorMessagesHelper.UpdateAsyncFailedError;
+                    ErrorMessage = ex.Message;
+                }
+                finally {
+                    LoadingData = false;
+                    RunAllCanExecute();
+                }
+
+                if (ErrorMessage != null && ErrorMessage != string.Empty) {
+                    MessageDialog messageDialog = new MessageDialog(ErrorMessage, ErrorMessageTitle);
+                    await messageDialog.ShowAsync();
+                    _navService.GoBack();
+                }
+            }
+            else {
+                RunAllCanExecute();
+            }
+        }
+
+        // When Delete button is pressed
+        private async void OnDelete<#= EntityName #>() {
+            var messageDialog = new MessageDialog("Delete this <#= EntityName #>?", "Delete confirmation");
+            messageDialog.Commands.Add(new UICommand("Cancel", (command) =>
+            {
+            }));
+
+            messageDialog.Commands.Add(new UICommand("Delete", async (command) =>
+            {
+                try {
+                    LoadingData = true;
+                    CrudResult = await _<#= EntityNameParameter #>Repository.Delete<#= EntityName #>Async(Selected<#= EntityName #>.Id);
+                    _eventAggregator.GetEvent<<#= EntityName #>DeletedEvent>().Publish(Selected<#= EntityName #>);
+                }
+                catch (HttpRequestException ex) {
+                    ErrorMessageTitle = ErrorMessagesHelper.DeleteAsyncFailedError;
+                    ErrorMessage = ex.Message;
+                }
+                finally {
+                    LoadingData = false;
+                    RunAllCanExecute();
+                    _navService.GoBack();
+                }
+            }));
+
+            messageDialog.DefaultCommandIndex = 0;
+            await messageDialog.ShowAsync();
+
+            if (ErrorMessage != null && ErrorMessage != string.Empty) {
+                messageDialog = new MessageDialog(ErrorMessage, ErrorMessageTitle);
+                await messageDialog.ShowAsync();
+                _navService.GoBack();
+            }
+        }
+
+        // If any Model rules broken, set SelectedCommonDataType Errors collection 
+        // which are data bound to UI error textblocks.
+        private void Display<#= EntityName #>ErrorMessages(ModelValidationResult modelValidationResult) {
+            var <#= EntityNameParameter #>UpdateErrors = new Dictionary<string, ReadOnlyCollection<string>>();
+
+            // Property keys format: address.{Propertyname}
+            foreach (var propkey in modelValidationResult.ModelState.Keys) {
+                string propertyName = propkey.Substring(propkey.IndexOf('.') + 1); // strip off order. prefix
+
+                // 'modelValidationResults.ModelState[propkey]' is the collection of string error messages
+                // for the property. Later on in UILayer, FirstErrorConverter will display the one of the collection.
+                // 'propertyName' will only occur once for each property in the Model so a new ReadOnlyCollection
+                // can be created on each pass of the foreach loop.
+                <#= EntityNameParameter #>UpdateErrors.Add(propertyName, new ReadOnlyCollection<string>(modelValidationResult.ModelState[propkey]));
+            }
+
+            if (<#= EntityNameParameter #>UpdateErrors.Count > 0) {
+                Selected<#= EntityName #>.Errors.SetAllErrors(<#= EntityNameParameter #>UpdateErrors);
+            }
+        }
+
+        // When a TextBox loses focus, RunAllCanExecute().
+        private void OnTextBoxLostFocusAction(object parameter) {
+            RunAllCanExecute();
+        }
+
+        // Run 'CanExecute' for all buttons
+        private void RunAllCanExecute() {
+            New<#= EntityName #>Command.RaiseCanExecuteChanged();
+            Update<#= EntityName #>Command.RaiseCanExecuteChanged();
+            Delete<#= EntityName #>Command.RaiseCanExecuteChanged();           
+        }
+    }
+}

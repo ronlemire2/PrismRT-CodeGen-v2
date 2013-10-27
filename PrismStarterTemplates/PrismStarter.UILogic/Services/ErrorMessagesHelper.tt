@@ -1,0 +1,33 @@
+﻿<#@ template debug="false" hostspecific="false" language="C#" #>
+<#@ output extension=".cs" #>
+<#@ include file="..\..\CommonStarterTemplate\CommonStarterTemplate.tt"#>
+<#
+    string StringsTableName = "CodeGenStrings";
+
+    Table table = database.Tables[StringsTableName];
+    table.Refresh();
+#>
+using <#= PrismStoreAppsNamespace #>;
+using <#= PrismStoreAppsInterfacesNamespace #>;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using Windows.ApplicationModel.Resources;
+
+namespace <#= UILogicServicesNamespace #>
+{
+    public static class ErrorMessagesHelper
+    {
+        static ErrorMessagesHelper()
+        {
+            ResourceLoader = new ResourceLoaderAdapter(new ResourceLoader());    
+        }
+        public static IResourceLoader ResourceLoader { get; set; }
+
+<#
+int stringsListCount = WriteUILogicErrorMessagesHelperStrings(server, DatabaseName, StringsTableName, true);
+#>
+    }
+}
